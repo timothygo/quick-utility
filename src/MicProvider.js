@@ -24,7 +24,7 @@ const MicProvider = ({ children }) => {
           type: "audio",
           mimeType: "audio/webm",
           sampleRate: 44100,
-          desiredSampRate: 8000,
+          desiredSampRate: 16000,
           recorderType: StereoAudioRecorder,
           numberOfAudioChannels: 1,
           disableLogs: true,
