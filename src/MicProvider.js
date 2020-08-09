@@ -32,7 +32,7 @@ const MicProvider = ({ children }) => {
 
         //returns a blob
         if (onStream) {
-          recorderOptions["timeSlice"] = 500;
+          recorderOptions["timeSlice"] = 1000;
           recorderOptions["ondataavailable"] = onStream;
         }
 
