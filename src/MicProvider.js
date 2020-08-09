@@ -10,53 +10,56 @@ const MicProvider = ({ children }) => {
   const [speech, setSpeech] = useState(null);
 
   const talk = useCallback(
-    (onStream) => {
+    async (onStream) => {
       if (talking) return;
+      setSpeech(null);
 
-      getUserMedia({ video: false, audio: true }, (err, stream) => {
-        if (err) return;
-        setSpeech(null);
-
-        const harkOptions = { interval: 150 };
-        const speechEvents = hark(stream, harkOptions);
-
-        const recorderOptions = {
-          type: "audio",
-          mimeType: "audio/webm",
-          sampleRate: 44100,
-          desiredSampRate: 16000,
-          recorderType: StereoAudioRecorder,
-          numberOfAudioChannels: 1,
-          disableLogs: true,
-        };
-
-        //returns a blob
-        if (onStream) {
-          recorderOptions["timeSlice"] = 1000;
-          recorderOptions["ondataavailable"] = onStream;
-        }
-
-        const recorder = new RecordRTCPromisesHandler(stream, recorderOptions);
-        recorder.startRecording();
-
-        // used for displaying animations
-        speechEvents.on("volume_change", (volume) => {
-          setTalking({ decibel: volume });
-        });
-
-        speechEvents.on("stopped_speaking", async () => {
-          // stop recording
-          await recorder.stopRecording();
-          speechEvents.stop();
-
-          // setSpeech({
-          //   type: (await recorder.getBlob().type) || "audio/wav",
-          //   dataURL: await recorder.getDataURL(),
-          // });
-          setSpeech(await recorder.getDataURL());
-          setTalking(null);
-        });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: false,
+        audio: true,
       });
+      const harkOptions = { interval: 150 };
+      const speechEvents = hark(stream, harkOptions);
+
+      const recorderOptions = {
+        type: "audio",
+        mimeType: "audio/webm",
+        sampleRate: 44100,
+        desiredSampRate: 16000,
+        recorderType: StereoAudioRecorder,
+        numberOfAudioChannels: 1,
+        disableLogs: true,
+      };
+
+      //returns a blob
+      if (onStream) {
+        recorderOptions["timeSlice"] = 1000;
+        recorderOptions["ondataavailable"] = onStream;
+      }
+
+      const recorder = new RecordRTCPromisesHandler(stream, recorderOptions);
+      recorder.startRecording();
+
+      // used for displaying animations
+      speechEvents.on("volume_change", (volume) => {
+        setTalking({ decibel: volume });
+      });
+
+      speechEvents.on("stopped_speaking", async () => {
+        // stop recording
+        await recorder.stopRecording();
+        speechEvents.stop();
+
+        // setSpeech({
+        //   type: (await recorder.getBlob().type) || "audio/wav",
+        //   dataURL: await recorder.getDataURL(),
+        // });
+        setSpeech(await recorder.getDataURL());
+        setTalking(null);
+      });
+      // getUserMedia({ video: false, audio: true }, (err, stream) => {
+      //   if (err) return;
+      // });
     },
     [talking]
   );
