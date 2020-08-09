@@ -1,32 +1,81 @@
-import React, { createContext, useContext, useCallback } from "react";
-import {
-  invokeSaveAsDialog,
-  RecordRTCPromisesHandler,
-  StereoAudioRecorder,
-} from "recordrtc";
+import React, { createContext, useContext, useState, useCallback } from "react";
+import { RecordRTCPromisesHandler, StereoAudioRecorder } from "recordrtc";
+import hark from "hark";
+import getUserMedia from "getusermedia";
 
 const context = createContext(null);
 
 const MicProvider = ({ children }) => {
-  const speak = useCallback(async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const recorder = new RecordRTCPromisesHandler(stream, {
-      type: "audio",
-      mimeType: "audio/webm",
-      sampleRate: 44100,
-      desiredSampRate: 8000,
-      recorderType: StereoAudioRecorder,
-      numberOfAudioChannels: 1,
-    });
-    recorder.startRecording();
+  const [talking, setTalking] = useState(null);
+  const [speech, setSpeech] = useState(null);
 
-    //save
-    setTimeout(async () => {
-      await recorder.stopRecording();
-      invokeSaveAsDialog(await recorder.getBlob());
-    }, 3000);
-  });
-  return <context.Provider value={{ speak }}>{children}</context.Provider>;
+  const talk = useCallback(
+    (onStream) => {
+      if (talking) return;
+
+      getUserMedia({ video: false, audio: true }, (err, stream) => {
+        if (err) return;
+        setSpeech(null);
+
+        const harkOptions = { interval: 150 };
+        const speechEvents = hark(stream, harkOptions);
+
+        const recorderOptions = {
+          type: "audio",
+          mimeType: "audio/webm",
+          sampleRate: 44100,
+          desiredSampRate: 8000,
+          recorderType: StereoAudioRecorder,
+          numberOfAudioChannels: 1,
+          disableLogs: true,
+        };
+
+        //returns a blob
+        if (onStream) {
+          recorderOptions["timeSlice"] = 500;
+          recorderOptions["ondataavailable"] = onStream;
+        }
+
+        const recorder = new RecordRTCPromisesHandler(stream, recorderOptions);
+        recorder.startRecording();
+
+        // used for displaying animations
+        speechEvents.on("volume_change", (volume) => {
+          setTalking({ decibel: volume });
+        });
+
+        speechEvents.on("stopped_speaking", async () => {
+          // stop recording
+          await recorder.stopRecording();
+          speechEvents.stop();
+
+          setSpeech({
+            type: (await recorder.getBlob().type) || "audio/wav",
+            dataURL: await recorder.getDataURL(),
+          });
+          setTalking(null);
+        });
+      });
+    },
+    [talking]
+  );
+
+  const record = useCallback(() => {
+    return talk(null);
+  }, [talk]);
+
+  const stream = useCallback(
+    (onStream) => {
+      return () => talk(onStream);
+    },
+    [talk]
+  );
+
+  return (
+    <context.Provider value={{ record, stream, talking, speech }}>
+      {children}
+    </context.Provider>
+  );
 };
 
 const useMic = () => {

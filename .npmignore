@@ -2,3 +2,5 @@ node_modules/
 src/**/*
 .babelrc
 .gitignore
+package.json
+webpack.config.js
