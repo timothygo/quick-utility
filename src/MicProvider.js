@@ -49,10 +49,11 @@ const MicProvider = ({ children }) => {
           await recorder.stopRecording();
           speechEvents.stop();
 
-          setSpeech({
-            type: (await recorder.getBlob().type) || "audio/wav",
-            dataURL: await recorder.getDataURL(),
-          });
+          // setSpeech({
+          //   type: (await recorder.getBlob().type) || "audio/wav",
+          //   dataURL: await recorder.getDataURL(),
+          // });
+          setSpeech(await recorder.getDataURL());
           setTalking(null);
         });
       });
